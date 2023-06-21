@@ -80,3 +80,74 @@ Webservers: Access to Webservers should only be allowed from the Nginx servers. 
 
 ![](./img/10.security-groups.png)
 #
+
+## Proceed With Compute Resources
+#
+
+You will need to set up and configure compute resources inside your VPC. The recources related to compute are:
+
+- EC2 Instances
+- Launch Templates
+- Target Groups
+- Autoscaling Groups
+- TLS Certificates
+- Application Load Balancers (ALB)
+  
+### TLS Certificates From Amazon Certificate Manager (ACM)
+#
+
+You will need TLS certificates to handle secured connectivity to your Application Load Balancers (ALB).
+
+- Navigate to AWS ACM
+- Request a public wildcard certificate for the domain name you registered in Freenom
+- Use DNS to validate the domain name
+- Tag the resource
+- Bind the ACM to the route53 hosted zone created earlier
+
+![](./img/11.certificates.png)
+#
+
+### Setup EFS
+#
+Amazon Elastic File System (Amazon EFS) provides a simple, scalable, fully managed elastic Network File System (NFS) for use with AWS Cloud services and on-premises resources. In this project, we will utulize EFS service and mount filesystems on both Nginx and Webservers to store data.
+
+- Create an EFS filesystem
+- Create an EFS mount target per AZ in the VPC, associate it with both subnets dedicated for data layer
+- Associate the Security groups created earlier for data layer.
+Create an EFS access point. (Give it a name and leave all other settings as default)
+
+![](./img/12.nfs.png)
+
+- On the EFS setup, create two access points for both `tooling` and `wordpress` applications
+  
+![](./img/13.access-points.png)
+#
+
+## Setup RDS
+#
+
+**Pre-requisite:** Create a KMS key from Key Management Service (KMS) to be used to encrypt the database instance.
+
+`Amazon Relational Database Service (Amazon RDS) is a managed distributed relational database service by Amazon Web Services. This web service running in the cloud designed to simplify setup, operations, maintenans & scaling of relational databases. Without RDS, Database Administrators (DBA) have more work to do, due to RDS, some DBAs have become jobless`
+
+To ensure that your databases are highly available and also have failover support in case one availability zone fails, we will configure a multi-AZ set up of RDS MySQL database instance. In our case, since we are only using 2 AZs, we can only failover to one, but the same concept applies to 3 Availability Zones. We will not consider possible failure of the whole Region, but for this AWS also has a solution – this is a more advanced concept that will be discussed in following projects.
+
+To configure RDS, follow steps below:
+
+- Create a subnet group and add 2 private subnets (data Layer)
+Create an RDS Instance for mysql 8.*.*
+
+![](./img/15.subnet-group.png)
+
+- To satisfy our architectural diagram, you will need to select either Dev/Test or Production Sample Template. But to minimize AWS cost, you can select the Do not create a standby instance option under Availability & durability sample template (The production template will enable Multi-AZ deployment)
+
+- Configure other settings accordingly (For test purposes, most of the default settings are good to go). In the real world, you will need to size the database appropriately. You will need to get some information about the usage. If it is a highly transactional database that grows at 10GB weekly, you must bear that in mind while configuring the initial storage allocation, storage autoscaling, and maximum storage threshold.
+
+- Configure VPC and security (ensure the database is not available from the Internet)
+- Configure backups and retention
+- Encrypt the database using the KMS key created earlier
+
+![](./img/14.kms.png)
+
+- Enable CloudWatch monitoring and export Error and Slow Query logs (for production, also include Audit)
+  #
